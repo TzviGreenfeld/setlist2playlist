@@ -245,7 +245,7 @@ if "oauth" not in st.session_state:
 
 
 # get current url (stored as dict)
-url_params = st.experimental_get_query_params()
+url_params = st.query_params
 
 # attempt sign in with cached token
 if st.session_state["cached_token"] != "":
@@ -324,4 +324,3 @@ if st.session_state["signed_in"]:
         modify_confirm = st.form_submit_button("Modify!",
                                                on_click=app_remove_recent,
                                                args=(username,))
-                                               
