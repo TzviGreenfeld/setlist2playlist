@@ -7,14 +7,20 @@ import time
 import random
 
 def get_token(oauth, code):
-    
-    token = oauth.get_access_token(code, as_dict=False, check_cache=False)
-    # remove cached token saved in directory
-    os.remove(".cache")
-    
-    # return the token
-    return token
-
+    try:
+        token = oauth.get_access_token(code, as_dict=False, check_cache=False)
+        # Comment out cache removal as it's unnecessary with check_cache=False
+        # and could cause issues if multiple users are running the app
+        # os.remove(".cache")
+        return token
+    except spotipy.oauth2.SpotifyOauthError as e:
+        st.error(f"OAuth Error: {str(e)}")
+        st.write("This is likely because the authorization code has expired or already been used.")
+        st.write(f"Please ensure your Redirect URI matches the one configured in your Spotify App settings: {st.secrets['SPOTIPY_REDIRECT_URI']}")
+        return None
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
+        return None
 
 
 def sign_in(token):
@@ -96,15 +102,27 @@ def get_tracks_all(username, playlist_id):
 
 
 def app_get_token():
+    """Get token using the authorization code in session state."""
     try:
+        if not st.session_state.get("code"):
+            st.error("No authorization code found in session state.")
+            return False
+            
         token = get_token(st.session_state["oauth"], st.session_state["code"])
+        if token:
+            st.session_state["cached_token"] = token
+            return True
+        else:
+            # Clear cached token if retrieval failed
+            st.session_state["cached_token"] = ""
+            return False
     except Exception as e:
         st.error("An error occurred during token retrieval!")
         st.write("The error is as follows:")
         st.write(e)
-    else:
-        st.session_state["cached_token"] = token
-
+        # Clear cached token if retrieval failed
+        st.session_state["cached_token"] = ""
+        return False
 
 
 def app_sign_in():
@@ -251,20 +269,20 @@ url_params = st.query_params
 processed_code = False
 
 # if code in url, get code, parse token
-if "code" in url_params and not st.session_state["cached_token"]: # Only process code if we don't have a token yet
-    # Check if the code in the URL is different from the one potentially stored (if any)
-    # Or if the code state is empty, meaning we haven't processed this code yet.
-    if st.session_state.get("code") != url_params["code"][0]:
-        st.session_state["code"] = url_params["code"][0]
-        app_get_token() # Attempt to get token
-        processed_code = True # Mark that we processed a code in this run
-        # Clear the code from session state immediately after trying to use it
-        # This prevents reusing an invalid code on the next rerun
-        st.session_state["code"] = "" 
-        # Clear the query parameters by rerunning without them
-        # This is the cleanest way to avoid the invalid_grant error on subsequent interactions
-        st.query_params.clear()
-
+if "code" in url_params: 
+    # Store the code and immediately clear URL parameters to prevent reuse
+    st.session_state["code"] = url_params["code"][0]
+    # Clear URL parameters immediately to avoid reusing the code
+    st.query_params.clear()
+    # Only attempt to get a token if we don't already have one
+    if not st.session_state.get("cached_token"):
+        success = app_get_token()
+        processed_code = True
+        # Whether successful or not, clear the code to prevent reuse
+        st.session_state["code"] = ""
+        # If we successfully got a token, we should be ready to sign in
+        if success:
+            st.rerun()  # Force a clean rerun with the new token
 
 # attempt sign in ONLY if we have a valid token and are not already signed in
 if st.session_state["cached_token"] != "" and not st.session_state["signed_in"]:
