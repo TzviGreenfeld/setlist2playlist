@@ -7,7 +7,7 @@ import time
 import random
 
 def get_token(oauth, code):
-
+    
     token = oauth.get_access_token(code, as_dict=False, check_cache=False)
     # remove cached token saved in directory
     os.remove(".cache")
@@ -125,28 +125,9 @@ def app_sign_in():
 
 def app_display_welcome():
     
-    # import secrets from streamlit deployment
-    cid = st.secrets["SPOTIPY_CLIENT_ID"]
-    csecret = st.secrets["SPOTIPY_CLIENT_SECRET"]
-    uri = st.secrets["SPOTIPY_REDIRECT_URI"]
-
-    # set scope and establish connection
-    scopes = " ".join(["user-read-private",
-                       "playlist-read-private",
-                       "playlist-modify-private",
-                       "playlist-modify-public",
-                       "user-read-recently-played"])
-
-    # create oauth object
-    oauth = SpotifyOAuth(scope=scopes,
-                         redirect_uri=uri,
-                         client_id=cid,
-                         client_secret=csecret)
-    # store oauth in session
-    st.session_state["oauth"] = oauth
-
     # retrieve auth url
-    auth_url = oauth.get_authorize_url()
+    # Use the oauth object stored in session state
+    auth_url = st.session_state["oauth"].get_authorize_url()
     
     # this SHOULD open the link in the same tab when Streamlit Cloud is updated
     # via the "_self" target
@@ -240,8 +221,27 @@ if "cached_token" not in st.session_state:
     st.session_state["cached_token"] = ""
 if "code" not in st.session_state:
     st.session_state["code"] = ""
+
+
+# --- Moved OAuth Initialization Here ---
+# Import secrets earlier if needed or ensure they are available globally
+cid = st.secrets["SPOTIPY_CLIENT_ID"]
+csecret = st.secrets["SPOTIPY_CLIENT_SECRET"]
+uri = st.secrets["SPOTIPY_REDIRECT_URI"]
+scopes = " ".join(["user-read-private",
+                   "playlist-read-private",
+                   "playlist-modify-private",
+                   "playlist-modify-public",
+                   "user-read-recently-played"])
+
+# Create oauth object and store in session state if not already there
+# This ensures it persists across reruns after authentication redirect
 if "oauth" not in st.session_state:
-    st.session_state["oauth"] = None
+    st.session_state["oauth"] = SpotifyOAuth(scope=scopes,
+                                            redirect_uri=uri,
+                                            client_id=cid,
+                                            client_secret=csecret)
+# --- End Moved OAuth Initialization ---
 
 
 # get current url (stored as dict)
