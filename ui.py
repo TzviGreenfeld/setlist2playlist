@@ -247,19 +247,36 @@ if "oauth" not in st.session_state:
 # get current url (stored as dict)
 url_params = st.query_params
 
-# attempt sign in with cached token
-if st.session_state["cached_token"] != "":
+# Flag to indicate if we just processed a code
+processed_code = False
+
+# if code in url, get code, parse token
+if "code" in url_params and not st.session_state["cached_token"]: # Only process code if we don't have a token yet
+    # Check if the code in the URL is different from the one potentially stored (if any)
+    # Or if the code state is empty, meaning we haven't processed this code yet.
+    if st.session_state.get("code") != url_params["code"][0]:
+        st.session_state["code"] = url_params["code"][0]
+        app_get_token() # Attempt to get token
+        processed_code = True # Mark that we processed a code in this run
+        # Clear the code from session state immediately after trying to use it
+        # This prevents reusing an invalid code on the next rerun
+        st.session_state["code"] = "" 
+        # Clear the query parameters by rerunning without them
+        # This is the cleanest way to avoid the invalid_grant error on subsequent interactions
+        st.query_params.clear()
+
+
+# attempt sign in ONLY if we have a valid token and are not already signed in
+if st.session_state["cached_token"] != "" and not st.session_state["signed_in"]:
     sp = app_sign_in()
-# if no token, but code in url, get code, parse token, and sign in
-elif "code" in url_params:
-    # all params stored as lists, see doc for explanation
-    st.session_state["code"] = url_params["code"][0]
-    app_get_token()
-    sp = app_sign_in()
-# otherwise, prompt for redirect
-else:
-    app_display_welcome()
-    
+# If we don't have a token and didn't just process a code, display welcome/login
+elif not st.session_state["cached_token"] and not processed_code:
+     app_display_welcome()
+# If sign in failed after processing code (token invalid, etc.), show welcome
+elif processed_code and not st.session_state["signed_in"]:
+     st.error("Authentication failed. Please try logging in again.")
+     app_display_welcome()
+
 
 # only display the following after login
 ### is there another way to do this? clunky to have everything in an if:
