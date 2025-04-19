@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from typing import Optional
+from proxy_provider import ProxyProvider
 
 class SetlistEvent:
     def __init__(self, artist: str, date: str, location: str, setlist: list[str]):
@@ -25,7 +26,7 @@ def extract_song_titles(url: str, proxy: Optional[dict[str, str]] = None) -> Opt
         Optional[SetlistEvent]: A SetlistEvent object containing the extracted data, or None if an error occurs.
     """
     try:
-        response = requests.get(url, proxies=proxy)
+        response = requests.get(url, proxies=proxy, timeout=10)
         response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -61,23 +62,33 @@ def extract_song_titles(url: str, proxy: Optional[dict[str, str]] = None) -> Opt
         print(f"An error occurred: {e}")
         return None
 
-def get_proxies_from_file(file_path: str) -> list[str]:
-    proxies = []
-    with open(file_path, 'r') as f:
-        proxies = f.read().splitlines()
-    return proxies
-
 def get_setlist_with_proxies(target_url: str) -> Optional[SetlistEvent]:
-    for proxy in get_proxies_from_file('valid-proxy.txt'):
+    # Initialize proxy provider with proxy list and validate proxies
+    proxy_provider = ProxyProvider('proxy-list.txt')
+    proxy_provider.validate_proxies()
+    
+    # If no valid proxies found, return None
+    if proxy_provider.valid_count == 0:
+        print("No valid proxies available")
+        return None
+
+    while True:
+        proxy = proxy_provider.get_next()
+        if not proxy:
+            print("No more valid proxies available")
+            return None
+
         proxy_dict = {'http': proxy, 'https': proxy}
         setlist_event = extract_song_titles(target_url, proxy=proxy_dict)
+        
         if setlist_event:
             return setlist_event
         else:
-            print(f"Failed to fetch data using proxy: {proxy}\n")
-    return None
+            print(f"Failed to fetch data using proxy: {proxy}")
+            proxy_provider.mark_invalid(proxy)
 
 if __name__ == "__main__":
+    # Example usage
     target_url = "https://www.setlist.fm/setlist/lady-gaga/2025/empire-polo-club-indio-ca-35e0d6f.html"
     setlist_event = get_setlist_with_proxies(target_url)
     if setlist_event:
