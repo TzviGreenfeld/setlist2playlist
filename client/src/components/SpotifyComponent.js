@@ -1,29 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import SpotifyService from '../services/SpotifyService';
 
-function SpotifyComponent() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [spotifyUser, setSpotifyUser] = useState(null);
-
-  // Handle the callback from Spotify OAuth
-  useEffect(() => {
-    if (window.location.pathname === '/callback') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const error = urlParams.get('error');
-
-      if (error) {
-        console.error('Error from Spotify:', error);
-        return;
-      }
-
-      if (code) {
-        handleSpotifyCallback(code);
-        // Remove the callback URL from browser history
-        window.history.replaceState({}, document.title, '/');
-      }
-    }
-  }, []);
+function SpotifyComponent({ 
+  songs, 
+  artistName, 
+  isLoggedIn, 
+  spotifyUser, 
+  setIsLoggedIn,
+  setSpotifyUser 
+}) {
+  const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [playlistError, setPlaylistError] = useState(null);
 
   const handleLogin = async () => {
     try {
@@ -34,15 +21,33 @@ function SpotifyComponent() {
     }
   };
 
-  const handleSpotifyCallback = async (code) => {
+  const handleCreatePlaylist = async () => {
+    if (!isLoggedIn || !spotifyUser || !songs || songs.length === 0 || !artistName) {
+      setPlaylistError('Please log in and ensure songs are fetched before creating a playlist');
+      return;
+    }
+
+    setIsCreatingPlaylist(true);
+    setPlaylistError(null);
+
     try {
-      const data = await SpotifyService.handleAuthCallback(code);
-      if (data.access_token) {
-        setIsLoggedIn(true);
-        // Here you could also fetch user data if needed
+      // First get the Spotify track URIs for the songs
+      const spotifyTracks = await SpotifyService.getSongsByArtistAndNames(artistName, songs);
+      const trackUris = spotifyTracks.map(track => track.uri);
+
+      if (trackUris.length === 0) {
+        throw new Error('No songs found on Spotify');
       }
+
+      // Create the playlist with the found tracks
+      const playlistName = `${artistName} Setlist`;
+      await SpotifyService.createPlaylist(spotifyUser.id, playlistName, trackUris);
+      alert('Playlist created successfully!');
     } catch (error) {
-      console.error('Error handling Spotify callback:', error);
+      console.error('Error creating playlist:', error);
+      setPlaylistError(error.message);
+    } finally {
+      setIsCreatingPlaylist(false);
     }
   };
 
@@ -54,8 +59,43 @@ function SpotifyComponent() {
         </button>
       ) : (
         <div className="spotify-logged-in">
-          <p>Connected to Spotify</p>
-          {/* Add more Spotify functionality here like create playlist button */}
+          <div className="user-info">
+            {spotifyUser?.images?.[0]?.url && (
+              <img
+                src={spotifyUser.images[0].url}
+                alt={spotifyUser.display_name}
+                className="profile-image"
+              />
+            )}
+            <div className="user-details">
+              <p className="username">Connected as {spotifyUser?.display_name}</p>
+              {spotifyUser?.email && <p className="email">{spotifyUser.email}</p>}
+            </div>
+          </div>
+          <div className="actions">
+            {songs && songs.length > 0 && artistName && (
+              <button
+                onClick={handleCreatePlaylist}
+                disabled={isCreatingPlaylist}
+                className="create-playlist-btn"
+              >
+                {isCreatingPlaylist ? 'Creating Playlist...' : 'Create Playlist'}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setIsLoggedIn(false);
+                setSpotifyUser(null);
+                window.localStorage.removeItem('spotify_token');
+              }}
+              className="spotify-logout-btn"
+            >
+              Logout
+            </button>
+          </div>
+          {playlistError && (
+            <p className="error-message">{playlistError}</p>
+          )}
         </div>
       )}
     </div>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import SpotifyComponent from './components/SpotifyComponent';
+import SpotifyService from './services/SpotifyService';
 
 function App() {
   const [url, setUrl] = useState('');
@@ -9,6 +10,47 @@ function App() {
   const [setlistData, setSetlistData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [spotifyUser, setSpotifyUser] = useState(null);
+
+  // Handle the callback from Spotify OAuth
+  useEffect(() => {
+    if (window.location.pathname === '/callback') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const error = urlParams.get('error');
+
+      if (error) {
+        console.error('Error from Spotify:', error);
+        return;
+      }
+
+      if (code) {
+        handleSpotifyCallback(code);
+        // Remove the callback URL from browser history
+        window.history.replaceState({}, document.title, '/');
+      }
+    }
+  }, []);
+
+  const handleSpotifyCallback = async (code) => {
+    try {
+      const data = await SpotifyService.handleAuthCallback(code);
+      if (data.access_token) {
+        setIsLoggedIn(true);
+        // Get user profile after successful login
+        const response = await fetch('https://api.spotify.com/v1/me', {
+          headers: {
+            'Authorization': `Bearer ${data.access_token}`
+          }
+        });
+        const userData = await response.json();
+        setSpotifyUser(userData);
+      }
+    } catch (error) {
+      console.error('Error handling Spotify callback:', error);
+    }
+  };
 
   const fetchSetlist = async (e) => {
     e.preventDefault();
@@ -32,8 +74,17 @@ function App() {
     <Router>
       <div className="App">
       <header className="App-header">
-        <h1>Setlist Fetcher</h1>
-        <SpotifyComponent />
+        <div className="header-content">
+          <h1>Setlist Fetcher</h1>
+          <SpotifyComponent 
+            isLoggedIn={isLoggedIn}
+            spotifyUser={spotifyUser}
+            setIsLoggedIn={setIsLoggedIn}
+            setSpotifyUser={setSpotifyUser}
+            songs={null}
+            artistName={null}
+          />
+        </div>
         <form onSubmit={fetchSetlist} className="setlist-form">
           <input
             type="url"
@@ -69,11 +120,28 @@ function App() {
                 <li key={index}>{song}</li>
               ))}
             </ol>
+            <SpotifyComponent 
+              songs={setlistData.setlist}
+              artistName={setlistData.artist}
+              isLoggedIn={isLoggedIn}
+              spotifyUser={spotifyUser}
+              setIsLoggedIn={setIsLoggedIn}
+              setSpotifyUser={setSpotifyUser}
+            />
           </div>
         )}
       </header>
       <Routes>
-        <Route path="/callback" element={<SpotifyComponent />} />
+        <Route path="/callback" element={
+          <SpotifyComponent 
+            songs={setlistData?.setlist}
+            artistName={setlistData?.artist}
+            isLoggedIn={isLoggedIn}
+            spotifyUser={spotifyUser}
+            setIsLoggedIn={setIsLoggedIn}
+            setSpotifyUser={setSpotifyUser}
+          />
+        } />
       </Routes>
       </div>
     </Router>

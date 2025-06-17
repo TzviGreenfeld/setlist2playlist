@@ -14,6 +14,26 @@
   padding: 20px;
 }
 
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 20px;
+}
+
+.header-content h1 {
+  margin: 0;
+}
+
+.header-content .spotify-container {
+  margin: 0;
+  padding: 10px 20px;
+  background: none;
+  min-width: 200px;
+}
+
 .setlist-form {
   display: flex;
   flex-direction: column;
@@ -56,8 +76,8 @@
 
 .song-list {
   text-align: left;
-  margin: 20px 0;
-  padding-left: 20px;
+  margin: 20px 10px;
+  padding-left: 50px;
 }
 
 /* Spotify Component Styles */
@@ -68,6 +88,11 @@
   border-radius: 8px;
   width: 80%;
   max-width: 600px;
+}
+
+.setlist-result .spotify-container {
+  margin: 20px 0;
+  background-color: rgba(30, 215, 96, 0.1);
 }
 
 .spotify-login-btn {
@@ -88,4 +113,91 @@
 
 .spotify-logged-in {
   color: #1ed760;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 15px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.profile-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid #1ed760;
+}
+
+.user-details {
+  text-align: left;
+}
+
+.username {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+}
+
+.email {
+  margin: 5px 0 0 0;
+  font-size: 14px;
+  color: #b3b3b3;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.spotify-logout-btn {
+  background-color: #282828;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.spotify-logout-btn:hover {
+  background-color: #404040;
+}
+
+.create-playlist-btn {
+  background-color: #1ed760;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.create-playlist-btn:hover {
+  background-color: #1db954;
+}
+
+.create-playlist-btn:disabled {
+  background-color: #8e8e8e;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #ff6b6b;
+  font-size: 14px;
+  margin-top: 8px;
 }

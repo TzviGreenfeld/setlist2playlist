@@ -1,33 +1,101 @@
-import SpotifyWebApi from 'spotify-web-api-node';
+export class SpotifyService {
+  static BASE_URL = 'https://api.spotify.com/v1';
+  static AUTH_URL = 'https://accounts.spotify.com/api/token';
+  static AUTHORIZE_URL = 'https://accounts.spotify.com/authorize';
 
-// Initialize Spotify API - Client credentials should be stored in environment variables
-const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.REACT_APP_SPOTIFY_CLIENT_ID,
-  clientSecret: process.env.REACT_APP_SPOTIFY_CLIENT_SECRET,
-  redirectUri: process.env.REACT_APP_SPOTIFY_REDIRECT_URI,
-});
-
-class SpotifyService {
-  static async getAccessToken() {
-    try {
-      const data = await spotifyApi.clientCredentialsGrant();
-      spotifyApi.setAccessToken(data.body.access_token);
-    } catch (error) {
-      console.error('Error getting Spotify access token:', error);
-      throw error;
+  static async fetchWithAuth(url, options = {}) {
+    const accessToken = localStorage.getItem('spotify_access_token');
+    if (!accessToken) {
+      throw new Error('No access token available');
     }
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      await this.refreshAccessToken();
+      // Retry the request with new token
+      return this.fetchWithAuth(url, options);
+    }
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Spotify API error: ${error.error?.message || response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  static splitArtistName(artistName) {
+    // Split by '&', 'and', or '+' and trim whitespace
+    const artists = artistName.split(/\s*(?:&|and|\+)\s*/);
+    return artists.map(artist => artist.trim());
+  }
+
+  static async searchSongWithArtist(songName, artistName) {
+    const params = new URLSearchParams({
+      q: `track:${songName} artist:${artistName}`,
+      type: 'track',
+      limit: 1
+    });
+
+    console.log(`Searching for song: ${songName} by ${artistName}`);
+
+    const data = await this.fetchWithAuth(
+      `${this.BASE_URL}/search?${params.toString()}`
+    );
+
+    return data.tracks.items[0] || null;
+  }
+
+  static async getAccessToken() {
+    const credentials = btoa(
+      `${process.env.REACT_APP_SPOTIFY_CLIENT_ID}:${process.env.REACT_APP_SPOTIFY_CLIENT_SECRET}`
+    );
+
+    const response = await fetch(this.AUTH_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get access token');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('spotify_access_token', data.access_token);
+    return data.access_token;
   }
 
   static async getArtistImage(artistName) {
     try {
       await this.getAccessToken();
-      const searchResult = await spotifyApi.searchArtists(artistName, { limit: 1 });
+      const params = new URLSearchParams({
+        q: artistName,
+        type: 'artist',
+        limit: 1
+      });
+
+      const data = await this.fetchWithAuth(
+        `${this.BASE_URL}/search?${params.toString()}`
+      );
       
-      if (searchResult.body.artists.items.length === 0) {
+      if (data.artists.items.length === 0) {
         throw new Error('Artist not found');
       }
 
-      const artist = searchResult.body.artists.items[0];
+      const artist = data.artists.items[0];
       return artist.images[0]?.url || null;
     } catch (error) {
       console.error('Error getting artist image:', error);
@@ -40,12 +108,25 @@ class SpotifyService {
       await this.getAccessToken();
       const songs = await Promise.all(
         songNames.map(async (songName) => {
-          const searchResult = await spotifyApi.searchTracks(`track:${songName} artist:${artistName}`, { limit: 1 });
-          if (searchResult.body.tracks.items.length === 0) {
-            console.warn(`Song not found: ${songName}`);
-            return null;
+          // First try with the full artist name
+          let song = await this.searchSongWithArtist(songName, artistName);
+          
+          // If not found and artist name contains separators, try individual artists
+          if (!song) {
+            const artists = this.splitArtistName(artistName);
+            if (artists.length > 1) {
+              console.log(`Trying individual artists for: ${songName}`);
+              for (const artist of artists) {
+                song = await this.searchSongWithArtist(songName, artist);
+                if (song) break;
+              }
+            }
           }
-          return searchResult.body.tracks.items[0];
+
+          if (!song) {
+            console.warn(`Song not found: ${songName} by any artist variation`);
+          }
+          return song;
         })
       );
 
@@ -58,22 +139,36 @@ class SpotifyService {
 
   static async createPlaylist(userId, playlistName, songUris) {
     try {
-      // This requires user authentication - make sure the user is logged in
-      const playlist = await spotifyApi.createPlaylist(userId, {
-        name: playlistName,
-        description: 'Created via Setlist App',
-        public: false
-      });
+      // Create the playlist
+      const playlist = await this.fetchWithAuth(
+        `${this.BASE_URL}/users/${userId}/playlists`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: playlistName,
+            description: 'Created via Setlist App',
+            public: false
+          })
+        }
+      );
 
       if (songUris.length > 0) {
-        // Spotify has a limit of 100 tracks per request
+        // Add tracks in chunks of 100 (Spotify's limit)
         for (let i = 0; i < songUris.length; i += 100) {
           const uriChunk = songUris.slice(i, i + 100);
-          await spotifyApi.addTracksToPlaylist(playlist.body.id, uriChunk);
+          await this.fetchWithAuth(
+            `${this.BASE_URL}/playlists/${playlist.id}/tracks`,
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                uris: uriChunk
+              })
+            }
+          );
         }
       }
 
-      return playlist.body;
+      return playlist;
     } catch (error) {
       console.error('Error creating playlist:', error);
       throw error;
@@ -84,29 +179,97 @@ class SpotifyService {
     const scopes = [
       'playlist-modify-public',
       'playlist-modify-private',
-      'user-read-private'
+      'user-read-private',
+      'user-read-email'
     ];
-    const state = 'some-state-value';
-    return spotifyApi.createAuthorizeURL(scopes, state, { show_dialog: true });
+    
+    const params = new URLSearchParams({
+      client_id: process.env.REACT_APP_SPOTIFY_CLIENT_ID,
+      response_type: 'code',
+      redirect_uri: process.env.REACT_APP_SPOTIFY_REDIRECT_URI,
+      scope: scopes.join(' '),
+      show_dialog: true,
+      state: Math.random().toString(36).substring(7)
+    });
+
+    return `${this.AUTHORIZE_URL}?${params.toString()}`;
   }
 
   static async handleAuthCallback(code) {
     try {
-      const data = await spotifyApi.authorizationCodeGrant(code);
-      spotifyApi.setAccessToken(data.body.access_token);
-      spotifyApi.setRefreshToken(data.body.refresh_token);
-      return data.body;
+      const params = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: process.env.REACT_APP_SPOTIFY_REDIRECT_URI
+      });
+
+      const credentials = btoa(
+        `${process.env.REACT_APP_SPOTIFY_CLIENT_ID}:${process.env.REACT_APP_SPOTIFY_CLIENT_SECRET}`
+      );
+
+      const response = await fetch(this.AUTH_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Auth error: ${error.error_description || response.statusText}`);
+      }
+
+      const data = await response.json();
+      localStorage.setItem('spotify_access_token', data.access_token);
+      localStorage.setItem('spotify_refresh_token', data.refresh_token);
+      
+      return data;
     } catch (error) {
       console.error('Error handling auth callback:', error);
+      console.error('Error details:', error.message);
       throw error;
     }
   }
 
   static async refreshAccessToken() {
     try {
-      const data = await spotifyApi.refreshAccessToken();
-      spotifyApi.setAccessToken(data.body.access_token);
-      return data.body;
+      const refreshToken = localStorage.getItem('spotify_refresh_token');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const params = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      });
+
+      const credentials = btoa(
+        `${process.env.REACT_APP_SPOTIFY_CLIENT_ID}:${process.env.REACT_APP_SPOTIFY_CLIENT_SECRET}`
+      );
+
+      const response = await fetch(this.AUTH_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Refresh token error: ${error.error_description || response.statusText}`);
+      }
+
+      const data = await response.json();
+      localStorage.setItem('spotify_access_token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('spotify_refresh_token', data.refresh_token);
+      }
+      
+      return data;
     } catch (error) {
       console.error('Error refreshing access token:', error);
       throw error;

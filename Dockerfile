@@ -21,3 +21,4 @@ COPY proxy-list.txt .
 EXPOSE 8000
 
 CMD ["uvicorn", "setlist_service:app", "--host", "0.0.0.0", "--port", "8000"]
+
