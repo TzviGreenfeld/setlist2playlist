@@ -33,25 +33,14 @@ const logSuccessMetric = (spotifyTracks, songs) => {
   console.log(`Successful tracks: ${successfulTracks.length} / ${spotifyTracks.length}. Success Rate: ${(successfulTracks.length / songs.length) * 100 + '%'}`);
 }
 
-function SpotifyComponent({
+export function CreatePlaylistButton({
   songs,
   artistName,
   isLoggedIn,
   spotifyUser,
-  setIsLoggedIn,
-  setSpotifyUser
 }) {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [playlistError, setPlaylistError] = useState(null);
-
-  const handleLogin = async () => {
-    try {
-      const authUrl = await SpotifyService.authenticateUser();
-      window.location.href = authUrl;
-    } catch (error) {
-      console.error('Error during Spotify login:', error);
-    }
-  };
 
   const handleCreatePlaylist = async () => {
     if (!isLoggedIn || !spotifyUser || !songs || songs.length === 0 || !artistName) {
@@ -89,6 +78,48 @@ function SpotifyComponent({
 
   const hasSongs = songs && songs.length > 0 && artistName;
 
+  return <>
+    <div className="actions">
+      {hasSongs && (
+        <button
+          onClick={handleCreatePlaylist}
+          disabled={isCreatingPlaylist}
+          className="create-playlist-btn"
+        >
+          {isCreatingPlaylist ? 'Creating Playlist...' : 'Create Playlist'}
+        </button>
+      )}
+
+    </div>
+    {
+      playlistError && (
+        <p className="error-message">{playlistError}</p>
+      )
+    }
+  </>
+}
+
+
+function SpotifyComponent({
+  songs,
+  artistName,
+  isLoggedIn,
+  spotifyUser,
+  setIsLoggedIn,
+  setSpotifyUser
+}) {
+  const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [playlistError, setPlaylistError] = useState(null);
+
+  const handleLogin = async () => {
+    try {
+      const authUrl = await SpotifyService.authenticateUser();
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Error during Spotify login:', error);
+    }
+  };
+
   return (
     <div className="spotify-container">
       {!isLoggedIn ? (
@@ -108,33 +139,19 @@ function SpotifyComponent({
             <div className="user-details">
               <p className="username">Connected as {spotifyUser?.display_name}</p>
               {spotifyUser?.email && <p className="email">{spotifyUser.email}</p>}
-              <button
-                onClick={() => {
-                  setIsLoggedIn(false);
-                  setSpotifyUser(null);
-                  window.localStorage.removeItem('spotify_token');
-                }}
-                className="spotify-logout-btn"
-              >
-                Logout
-              </button>
             </div>
+            <button
+              onClick={() => {
+                setIsLoggedIn(false);
+                setSpotifyUser(null);
+                window.localStorage.removeItem('spotify_token');
+              }}
+              className="spotify-logout-btn"
+            >
+              Logout
+            </button>
           </div>
-          <div className="actions">
-            {hasSongs && (
-              <button
-                onClick={handleCreatePlaylist}
-                disabled={isCreatingPlaylist}
-                className="create-playlist-btn"
-              >
-                {isCreatingPlaylist ? 'Creating Playlist...' : 'Create Playlist'}
-              </button>
-            )}
 
-          </div>
-          {playlistError && (
-            <p className="error-message">{playlistError}</p>
-          )}
         </div>
       )}
     </div>
@@ -142,3 +159,5 @@ function SpotifyComponent({
 }
 
 export default SpotifyComponent;
+
+

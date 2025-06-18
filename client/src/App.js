@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
-import SpotifyComponent from './components/SpotifyComponent';
+import SpotifyComponent, { CreatePlaylistButton } from './components/SpotifyComponent';
 import SpotifyService from './services/SpotifyService';
 
 const IS_TEST = process.env.REACT_APP_IS_TEST === 'true';
@@ -87,6 +87,8 @@ function App() {
               artistName={null}
             />
           </div>
+          {/* </header> */}
+
           <form onSubmit={fetchSetlist} className="setlist-form">
             <input
               type="url"
@@ -96,6 +98,11 @@ function App() {
               required
               className="url-input"
             />
+
+            <button type="submit" disabled={loading}>
+              {loading ? 'Fetching...' : 'Get Setlist'}
+            </button>
+
             <label className="proxy-checkbox">
               <input
                 type="checkbox"
@@ -104,9 +111,6 @@ function App() {
               />
               Use Proxies
             </label>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Fetching...' : 'Get Setlist'}
-            </button>
           </form>
 
           {error && <div className="error">{error}</div>}
@@ -122,24 +126,22 @@ function App() {
                   <li key={index}>{song}</li>
                 ))}
               </ol>
+
+              <CreatePlaylistButton
+                songs={setlistData.setlist}
+                artistName={setlistData.artist}
+                isLoggedIn={isLoggedIn}
+                spotifyUser={spotifyUser}
+              />
+
             </div>
           )}
-        </header>
-        <Routes>
-          <Route path="/callback" element={
-            <SpotifyComponent
-              songs={setlistData?.setlist}
-              artistName={setlistData?.artist}
-              isLoggedIn={isLoggedIn}
-              spotifyUser={spotifyUser}
-              setIsLoggedIn={setIsLoggedIn}
-              setSpotifyUser={setSpotifyUser}
-            />
-          } />
-        </Routes>
-      </div>
+
+        </header >
+      </div >
     </Router>
   );
+
 }
 
 export default App;
