@@ -120,18 +120,10 @@ function App() {
                 <li key={index}>{song}</li>
               ))}
             </ol>
-            <SpotifyComponent 
-              songs={setlistData.setlist}
-              artistName={setlistData.artist}
-              isLoggedIn={isLoggedIn}
-              spotifyUser={spotifyUser}
-              setIsLoggedIn={setIsLoggedIn}
-              setSpotifyUser={setSpotifyUser}
-            />
           </div>
         )}
       </header>
-      <Routes>
+      {/* <Routes>
         <Route path="/callback" element={
           <SpotifyComponent 
             songs={setlistData?.setlist}
@@ -142,7 +134,7 @@ function App() {
             setSpotifyUser={setSpotifyUser}
           />
         } />
-      </Routes>
+      </Routes> */}
       </div>
     </Router>
   );

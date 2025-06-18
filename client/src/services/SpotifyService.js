@@ -52,7 +52,13 @@ export class SpotifyService {
       `${this.BASE_URL}/search?${params.toString()}`
     );
 
-    return data.tracks.items[0] || null;
+    if (!data.tracks || !data.tracks.items) {
+      console.warn(`No tracks found for: ${songName} by ${artistName}`);
+    } else if (data.tracks.items.length > 0) {
+      return data.tracks.items[0];
+    }
+    console.warn(`Song not found: ${songName} by ${artistName}`);
+    return null;
   }
 
   static async getAccessToken() {
