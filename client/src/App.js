@@ -4,8 +4,10 @@ import './App.css';
 import SpotifyComponent from './components/SpotifyComponent';
 import SpotifyService from './services/SpotifyService';
 
+const IS_TEST = process.env.REACT_APP_IS_TEST === 'true';
+
 function App() {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(IS_TEST ? 'https://www.setlist.fm/setlist/kendrick-lamar-and-sza/2025/hersheypark-stadium-hershey-pa-b5fe986.html' : '');
   const [useProxies, setUseProxies] = useState(false);
   const [setlistData, setSetlistData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -73,68 +75,68 @@ function App() {
   return (
     <Router>
       <div className="App">
-      <header className="App-header">
-        <div className="header-content">
-          <h1>Setlist Fetcher</h1>
-          <SpotifyComponent 
-            isLoggedIn={isLoggedIn}
-            spotifyUser={spotifyUser}
-            setIsLoggedIn={setIsLoggedIn}
-            setSpotifyUser={setSpotifyUser}
-            songs={null}
-            artistName={null}
-          />
-        </div>
-        <form onSubmit={fetchSetlist} className="setlist-form">
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter setlist.fm URL"
-            required
-            className="url-input"
-          />
-          <label className="proxy-checkbox">
-            <input
-              type="checkbox"
-              checked={useProxies}
-              onChange={(e) => setUseProxies(e.target.checked)}
+        <header className="App-header">
+          <div className="header-content">
+            <h1>Setlist Fetcher</h1>
+            <SpotifyComponent
+              isLoggedIn={isLoggedIn}
+              spotifyUser={spotifyUser}
+              setIsLoggedIn={setIsLoggedIn}
+              setSpotifyUser={setSpotifyUser}
+              songs={null}
+              artistName={null}
             />
-            Use Proxies
-          </label>
-          <button type="submit" disabled={loading}>
-            {loading ? 'Fetching...' : 'Get Setlist'}
-          </button>
-        </form>
-
-        {error && <div className="error">{error}</div>}
-
-        {setlistData && (
-          <div className="setlist-result">
-            <h2>{setlistData.artist}</h2>
-            <p className="event-details">
-              {setlistData.date} - {setlistData.location}
-            </p>
-            <ol className="song-list">
-              {setlistData.setlist.map((song, index) => (
-                <li key={index}>{song}</li>
-              ))}
-            </ol>
           </div>
-        )}
-      </header>
-      {/* <Routes>
-        <Route path="/callback" element={
-          <SpotifyComponent 
-            songs={setlistData?.setlist}
-            artistName={setlistData?.artist}
-            isLoggedIn={isLoggedIn}
-            spotifyUser={spotifyUser}
-            setIsLoggedIn={setIsLoggedIn}
-            setSpotifyUser={setSpotifyUser}
-          />
-        } />
-      </Routes> */}
+          <form onSubmit={fetchSetlist} className="setlist-form">
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Enter setlist.fm URL"
+              required
+              className="url-input"
+            />
+            <label className="proxy-checkbox">
+              <input
+                type="checkbox"
+                checked={useProxies}
+                onChange={(e) => setUseProxies(e.target.checked)}
+              />
+              Use Proxies
+            </label>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Fetching...' : 'Get Setlist'}
+            </button>
+          </form>
+
+          {error && <div className="error">{error}</div>}
+
+          {setlistData && (
+            <div className="setlist-result">
+              <h2>{setlistData.artist}</h2>
+              <p className="event-details">
+                {setlistData.date} - {setlistData.location}
+              </p>
+              <ol className="song-list">
+                {setlistData.setlist.map((song, index) => (
+                  <li key={index}>{song}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </header>
+        <Routes>
+          <Route path="/callback" element={
+            <SpotifyComponent
+              songs={setlistData?.setlist}
+              artistName={setlistData?.artist}
+              isLoggedIn={isLoggedIn}
+              spotifyUser={spotifyUser}
+              setIsLoggedIn={setIsLoggedIn}
+              setSpotifyUser={setSpotifyUser}
+            />
+          } />
+        </Routes>
       </div>
     </Router>
   );

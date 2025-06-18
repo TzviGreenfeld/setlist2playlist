@@ -1,11 +1,43 @@
 import React, { useState } from 'react';
 import SpotifyService from '../services/SpotifyService';
 
-function SpotifyComponent({ 
-  songs, 
-  artistName, 
-  isLoggedIn, 
-  spotifyUser, 
+const IS_TEST = process.env.REACT_APP_IS_TEST === 'true';
+
+const logSuccessMetric = (spotifyTracks, songs) => {
+  const is_same_song = (fullName, name) => {
+    return fullName.toLowerCase().trim().includes(name.toLowerCase().trim());
+  };
+
+  console.table(spotifyTracks.map((track, index) => ({
+    original_song_name: songs[index],
+    actual_song_name: track.name,
+    is_same: is_same_song(track.name, songs[index])
+  })));
+
+  const successfulTracks = spotifyTracks.filter((track, index) => (
+    is_same_song(track.name, songs[index]) ||
+    (index < songs.length - 1 && is_same_song(track.name, songs[index + 1])) ||
+    (index < songs.length - 2 && is_same_song(track.name, songs[index + 2]))
+  ));
+
+  const unSuccessfulTracks = spotifyTracks.filter((track, index) => (
+    !(
+      is_same_song(track.name, songs[index]) ||
+      (index < songs.length - 1 && is_same_song(track.name, songs[index + 1])) ||
+      (index < songs.length - 2 && is_same_song(track.name, songs[index + 2]))
+    )
+  ));
+
+
+  console.log("unSuccessfulTracks", unSuccessfulTracks.map(track => track.name).join('\n'));
+  console.log(`Successful tracks: ${successfulTracks.length} / ${spotifyTracks.length}. Success Rate: ${(successfulTracks.length / songs.length) * 100 + '%'}`);
+}
+
+function SpotifyComponent({
+  songs,
+  artistName,
+  isLoggedIn,
+  spotifyUser,
   setIsLoggedIn,
   setSpotifyUser
 }) {
@@ -34,6 +66,10 @@ function SpotifyComponent({
       // First get the Spotify track URIs for the songs
       const spotifyTracks = await SpotifyService.getSongsByArtistAndNames(artistName, songs);
       const trackUris = spotifyTracks.map(track => track.uri);
+
+      if (IS_TEST) {
+        logSuccessMetric(spotifyTracks, songs);
+      }
 
       if (trackUris.length === 0) {
         throw new Error('No songs found on Spotify');
@@ -72,16 +108,16 @@ function SpotifyComponent({
             <div className="user-details">
               <p className="username">Connected as {spotifyUser?.display_name}</p>
               {spotifyUser?.email && <p className="email">{spotifyUser.email}</p>}
-               <button
-              onClick={() => {
-                setIsLoggedIn(false);
-                setSpotifyUser(null);
-                window.localStorage.removeItem('spotify_token');
-              }}
-              className="spotify-logout-btn"
-            >
-              Logout
-            </button>
+              <button
+                onClick={() => {
+                  setIsLoggedIn(false);
+                  setSpotifyUser(null);
+                  window.localStorage.removeItem('spotify_token');
+                }}
+                className="spotify-logout-btn"
+              >
+                Logout
+              </button>
             </div>
           </div>
           <div className="actions">
@@ -94,7 +130,7 @@ function SpotifyComponent({
                 {isCreatingPlaylist ? 'Creating Playlist...' : 'Create Playlist'}
               </button>
             )}
-           
+
           </div>
           {playlistError && (
             <p className="error-message">{playlistError}</p>

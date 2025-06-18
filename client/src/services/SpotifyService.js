@@ -55,6 +55,7 @@ export class SpotifyService {
     if (!data.tracks || !data.tracks.items) {
       console.warn(`No tracks found for: ${songName} by ${artistName}`);
     } else if (data.tracks.items.length > 0) {
+      console.log(`Found song: ${data.tracks.items[0].name} by ${data.tracks.items[0].artists.map(a => a.name).join(', ')}`);
       return data.tracks.items[0];
     }
     console.warn(`Song not found: ${songName} by ${artistName}`);
@@ -84,59 +85,36 @@ export class SpotifyService {
     return data.access_token;
   }
 
-  static async getArtistImage(artistName) {
-    try {
-      await this.getAccessToken();
-      const params = new URLSearchParams({
-        q: artistName,
-        type: 'artist',
-        limit: 1
-      });
-
-      const data = await this.fetchWithAuth(
-        `${this.BASE_URL}/search?${params.toString()}`
-      );
-      
-      if (data.artists.items.length === 0) {
-        throw new Error('Artist not found');
-      }
-
-      const artist = data.artists.items[0];
-      return artist.images[0]?.url || null;
-    } catch (error) {
-      console.error('Error getting artist image:', error);
-      throw error;
-    }
-  }
-
   static async getSongsByArtistAndNames(artistName, songNames) {
+    const artists = this.splitArtistName(artistName);
+
+
+    if (artists.length > 1) {
+      console.warn(`Multiple artists found: ${artists.join(', ')}.`);
+    }
+
     try {
       await this.getAccessToken();
       const songs = await Promise.all(
-        songNames.map(async (songName) => {
-          // First try with the full artist name
-          let song = await this.searchSongWithArtist(songName, artistName);
-          
-          // If not found and artist name contains separators, try individual artists
-          if (!song) {
-            const artists = this.splitArtistName(artistName);
-            if (artists.length > 1) {
-              console.log(`Trying individual artists for: ${songName}`);
-              for (const artist of artists) {
-                song = await this.searchSongWithArtist(songName, artist);
-                if (song) break;
-              }
+
+        songNames.map(async (songName, index) => {
+          for (const artistName of artists) {
+            const song = await this.searchSongWithArtist(songName, artistName);
+            if (!song) {
+              console.warn(`Song not found: ${songName} by ${artistName}`);
+              continue; // Skip to next artist if not found
             }
+            return [index, song];
           }
-
-          if (!song) {
-            console.warn(`Song not found: ${songName} by any artist variation`);
-          }
-          return song;
         })
-      );
 
-      return songs.filter(song => song !== null);
+      );
+      const orderedFilteredSongs = songs
+        .filter(indexedSong => indexedSong && indexedSong[1] !== null)
+        .sort((a, b) => a[0] - b[0])
+        .map(song => song[1]);
+
+      return orderedFilteredSongs;
     } catch (error) {
       console.error('Error getting songs:', error);
       throw error;
@@ -182,13 +160,14 @@ export class SpotifyService {
   }
 
   static authenticateUser() {
+    // TODO: add reading playlist scope
     const scopes = [
       'playlist-modify-public',
       'playlist-modify-private',
       'user-read-private',
       'user-read-email'
     ];
-    
+
     const params = new URLSearchParams({
       client_id: process.env.REACT_APP_SPOTIFY_CLIENT_ID,
       response_type: 'code',
@@ -230,7 +209,7 @@ export class SpotifyService {
       const data = await response.json();
       localStorage.setItem('spotify_access_token', data.access_token);
       localStorage.setItem('spotify_refresh_token', data.refresh_token);
-      
+
       return data;
     } catch (error) {
       console.error('Error handling auth callback:', error);
@@ -274,7 +253,7 @@ export class SpotifyService {
       if (data.refresh_token) {
         localStorage.setItem('spotify_refresh_token', data.refresh_token);
       }
-      
+
       return data;
     } catch (error) {
       console.error('Error refreshing access token:', error);
