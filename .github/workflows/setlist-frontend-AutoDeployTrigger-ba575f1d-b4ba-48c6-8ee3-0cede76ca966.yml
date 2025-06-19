@@ -1,0 +1,48 @@
+name: Trigger auto deployment for setlist-frontend
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ master ]
+    paths:
+    - '**'
+    - '.github/workflows/setlist-frontend-AutoDeployTrigger-ba575f1d-b4ba-48c6-8ee3-0cede76ca966.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.SETLISTFRONTEND_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.SETLISTFRONTEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.SETLISTFRONTEND_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}client\Dockerfileclient\Dockerfile
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: acrsetlistapp.azurecr.io
+          registryUsername: ${{ secrets.SETLISTFRONTEND_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.SETLISTFRONTEND_REGISTRY_PASSWORD }}
+          containerAppName: setlist-frontend
+          resourceGroup: rg-setlist-app
+          imageToBuild: acrsetlistapp.azurecr.io/setlist-frontend:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
