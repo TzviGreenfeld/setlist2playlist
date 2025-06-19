@@ -118,7 +118,7 @@ function SpotifyComponent({
   };
 
   return (
-    <div className="spotify-container">
+    <div className={`spotify-container ${isLoggedIn ? 'logged-in' : 'logged-out'}`}>
       {!isLoggedIn ? (
         <button onClick={handleLogin} className="spotify-login-btn">
           Login with Spotify

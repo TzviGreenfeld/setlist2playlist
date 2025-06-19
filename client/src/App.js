@@ -75,19 +75,26 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <header className="App-header">
-          <div className="header-content">
-            <h1>Setlist Fetcher</h1>
-            <SpotifyComponent
-              isLoggedIn={isLoggedIn}
-              spotifyUser={spotifyUser}
-              setIsLoggedIn={setIsLoggedIn}
-              setSpotifyUser={setSpotifyUser}
-              songs={null}
-              artistName={null}
-            />
-          </div>
-          {/* </header> */}
+        <SpotifyComponent
+          isLoggedIn={isLoggedIn}
+          spotifyUser={spotifyUser}
+          setIsLoggedIn={setIsLoggedIn}
+          setSpotifyUser={setSpotifyUser}
+          songs={null}
+          artistName={null}
+        />
+        <main className="main-content">
+          <header className="App-header">
+            <div className="header-content">
+              <div className='header-and-description'>
+                <h1>Setlist Fetcher</h1>
+                <p className="app-description">
+                  Login with your Spotify account, then paste a setlist.fm URL to instantly create a Spotify playlist from that concert's setlist.
+                </p>
+              </div>
+
+            </div>
+          </header>
 
           <form onSubmit={fetchSetlist} className="setlist-form">
             <input
@@ -137,8 +144,7 @@ function App() {
 
             </div>
           )}
-
-        </header >
+        </main>
       </div >
     </Router>
   );
