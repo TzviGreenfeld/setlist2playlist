@@ -132,6 +132,7 @@ function App() {
                 artistName={setlistData.artist}
                 isLoggedIn={isLoggedIn}
                 spotifyUser={spotifyUser}
+                playlistName={`${setlistData.artist} ${setlistData.location} Setlist - ${setlistData.date}`}
               />
 
             </div>

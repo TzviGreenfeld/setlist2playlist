@@ -38,6 +38,7 @@ export function CreatePlaylistButton({
   artistName,
   isLoggedIn,
   spotifyUser,
+  playlistName,
 }) {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [playlistError, setPlaylistError] = useState(null);
@@ -65,7 +66,7 @@ export function CreatePlaylistButton({
       }
 
       // Create the playlist with the found tracks
-      const playlistName = `${artistName} Setlist`;
+
       await SpotifyService.createPlaylist(spotifyUser.id, playlistName, trackUris);
       alert('Playlist created successfully!');
     } catch (error) {
