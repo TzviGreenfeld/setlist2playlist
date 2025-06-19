@@ -59,7 +59,7 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:8000/setlist/?url=${encodeURIComponent(url)}&use_proxies=${useProxies}`);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/setlist/?url=${encodeURIComponent(url)}&use_proxies=${useProxies}`);
       if (!response.ok) {
         throw new Error('Failed to fetch setlist');
       }

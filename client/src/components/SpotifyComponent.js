@@ -101,15 +101,11 @@ export function CreatePlaylistButton({
 
 
 function SpotifyComponent({
-  songs,
-  artistName,
   isLoggedIn,
   spotifyUser,
   setIsLoggedIn,
   setSpotifyUser
 }) {
-  const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
-  const [playlistError, setPlaylistError] = useState(null);
 
   const handleLogin = async () => {
     try {
