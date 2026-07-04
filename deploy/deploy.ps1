@@ -62,13 +62,40 @@ finally {
     Pop-Location
 }
 
-# Read Spotify credentials from client/.env
+# Read local client/.env, override just the two URL vars, keep everything else
 $envFile = Join-Path $repoRoot "client\.env"
 if (-not (Test-Path $envFile)) { throw "Missing $envFile" }
-$spotifyClientId     = (Select-String -Path $envFile -Pattern '^REACT_APP_SPOTIFY_CLIENT_ID=(.*)').Matches[0].Groups[1].Value
-$spotifyClientSecret = (Select-String -Path $envFile -Pattern '^REACT_APP_SPOTIFY_CLIENT_SECRET=(.*)').Matches[0].Groups[1].Value
-if (-not $spotifyClientId -or -not $spotifyClientSecret) {
-    throw "REACT_APP_SPOTIFY_CLIENT_ID / SECRET missing from $envFile"
+
+$overrides = [ordered]@{
+    "REACT_APP_SPOTIFY_REDIRECT_URI" = $redirectUri
+    "REACT_APP_BACKEND_URL"          = $backendUrl
+}
+
+$mergedLines = New-Object System.Collections.Generic.List[string]
+$seen = @{}
+foreach ($line in Get-Content $envFile) {
+    $m = [regex]::Match($line, '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=')
+    if ($m.Success -and $overrides.Contains($m.Groups[1].Value)) {
+        $k = $m.Groups[1].Value
+        $mergedLines.Add("$k=$($overrides[$k])") | Out-Null
+        $seen[$k] = $true
+    } else {
+        $mergedLines.Add($line) | Out-Null
+    }
+}
+# Append overrides that weren't in the file
+foreach ($k in $overrides.Keys) {
+    if (-not $seen.ContainsKey($k)) {
+        $mergedLines.Add("$k=$($overrides[$k])") | Out-Null
+    }
+}
+$mergedEnv = ($mergedLines -join "`n") + "`n"
+
+# Read setlist.fm API key (backend search). Optional: warn if absent.
+$setlistApiKeyMatch = (Select-String -Path $envFile -Pattern '^SETLIST_FM_API_KEY=(.*)')
+$setlistApiKey = if ($setlistApiKeyMatch) { $setlistApiKeyMatch.Matches[0].Groups[1].Value } else { "" }
+if (-not $setlistApiKey) {
+    Write-Host "    WARNING: SETLIST_FM_API_KEY not found in $envFile - artist search will be disabled in prod" -ForegroundColor Yellow
 }
 
 Write-Host "==> Staging project" -ForegroundColor Cyan
@@ -85,20 +112,10 @@ Copy-Item (Join-Path $deployDir "docker-compose.prod.yml") $stagingSrc -Force
 Copy-Item (Join-Path $deployDir "Caddyfile") $stagingSrc -Force
 
 # Overwrite client/.env for prod (baked into React build)
-@"
-REACT_APP_SPOTIFY_CLIENT_ID=$spotifyClientId
-REACT_APP_SPOTIFY_CLIENT_SECRET=$spotifyClientSecret
-REACT_APP_SPOTIFY_REDIRECT_URI=$redirectUri
-REACT_APP_BACKEND_URL=$backendUrl
-"@ | Set-Content -Encoding ASCII (Join-Path $stagingSrc "client\.env")
+Set-Content -Path (Join-Path $stagingSrc "client\.env") -Value $mergedEnv -Encoding ASCII -NoNewline
 
 # .env for docker compose (feeds build args)
-@"
-REACT_APP_SPOTIFY_CLIENT_ID=$spotifyClientId
-REACT_APP_SPOTIFY_CLIENT_SECRET=$spotifyClientSecret
-REACT_APP_SPOTIFY_REDIRECT_URI=$redirectUri
-REACT_APP_BACKEND_URL=$backendUrl
-"@ | Set-Content -Encoding ASCII (Join-Path $stagingSrc ".env")
+Set-Content -Path (Join-Path $stagingSrc ".env") -Value $mergedEnv -Encoding ASCII -NoNewline
 
 Write-Host "==> Creating tarball" -ForegroundColor Cyan
 tar -czf $tarball -C $stagingRoot src
@@ -109,14 +126,7 @@ if ($LASTEXITCODE -ne 0) { throw "scp failed" }
 
 Write-Host "==> Extracting and (re)building on VM" -ForegroundColor Cyan
 $svcArg = if ($Service) { $Service } else { "" }
-$remoteCmd = @"
-set -e
-rm -rf ~/src
-tar -xzf ~/s2p.tgz -C ~
-cd ~/src
-sudo docker compose -f docker-compose.prod.yml up -d --build $svcArg
-sudo docker compose -f docker-compose.prod.yml ps
-"@
+$remoteCmd = "set -e; rm -rf ~/src; tar -xzf ~/s2p.tgz -C ~; cd ~/src; sudo docker compose -f docker-compose.prod.yml up -d --build $svcArg; sudo docker compose -f docker-compose.prod.yml ps"
 
 ssh -i $SshKey -o StrictHostKeyChecking=no $sshTarget $remoteCmd
 if ($LASTEXITCODE -ne 0) { throw "remote deploy failed" }

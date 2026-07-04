@@ -117,40 +117,36 @@ function SpotifyComponent({
     }
   };
 
-  return (
-    <div className={`spotify-container ${isLoggedIn ? 'logged-in' : 'logged-out'}`}>
-      {!isLoggedIn ? (
-        <button onClick={handleLogin} className="spotify-login-btn">
-          Login with Spotify
-        </button>
-      ) : (
-        <div className="spotify-logged-in">
-          <div className="user-info">
-            {spotifyUser?.images?.[0]?.url && (
-              <img
-                src={spotifyUser.images[0].url}
-                alt={spotifyUser.display_name}
-                className="profile-image"
-              />
-            )}
-            <div className="user-details">
-              <p className="username">Connected as {spotifyUser?.display_name}</p>
-              {spotifyUser?.email && <p className="email">{spotifyUser.email}</p>}
-            </div>
-            <button
-              onClick={() => {
-                setIsLoggedIn(false);
-                setSpotifyUser(null);
-                window.localStorage.removeItem('spotify_token');
-              }}
-              className="spotify-logout-btn"
-            >
-              Logout
-            </button>
-          </div>
+  if (!isLoggedIn) {
+    return (
+      <button onClick={handleLogin} className="spotify-login-btn">
+        <span className="spotify-dot" aria-hidden="true" />
+        Connect Spotify
+      </button>
+    );
+  }
 
-        </div>
+  return (
+    <div className="user-chip">
+      {spotifyUser?.images?.[0]?.url && (
+        <img
+          src={spotifyUser.images[0].url}
+          alt={spotifyUser.display_name}
+          className="profile-image"
+        />
       )}
+      <span className="username">{spotifyUser?.display_name}</span>
+      <button
+        onClick={() => {
+          setIsLoggedIn(false);
+          setSpotifyUser(null);
+          window.localStorage.removeItem('spotify_token');
+        }}
+        className="spotify-logout-btn"
+        title="Log out"
+      >
+        Log out
+      </button>
     </div>
   );
 }
