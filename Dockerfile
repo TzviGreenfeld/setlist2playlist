@@ -15,8 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application files
 COPY setlist_service.py .
 COPY setlist_scraper.py .
-COPY proxy_provider.py .
-COPY proxy-list.txt .
 
 EXPOSE 8000
 

@@ -76,14 +76,6 @@
   box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
 }
 
-.proxy-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 16px;
-  color: #E2E8F0;
-}
-
 .error {
   color: #FEB2B2;
   margin: 10px 0;

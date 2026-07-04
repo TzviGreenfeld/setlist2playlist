@@ -1,0 +1,49 @@
+services:
+  backend:
+    build: .
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./client
+      args:
+        REACT_APP_SPOTIFY_CLIENT_ID: ${REACT_APP_SPOTIFY_CLIENT_ID}
+        REACT_APP_SPOTIFY_CLIENT_SECRET: ${REACT_APP_SPOTIFY_CLIENT_SECRET}
+        REACT_APP_SPOTIFY_REDIRECT_URI: ${REACT_APP_SPOTIFY_REDIRECT_URI}
+        REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL}
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  default:
+    driver: bridge

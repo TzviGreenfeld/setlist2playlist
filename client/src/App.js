@@ -8,7 +8,6 @@ const IS_TEST = process.env.REACT_APP_IS_TEST === 'true';
 
 function App() {
   const [url, setUrl] = useState(IS_TEST ? 'https://www.setlist.fm/setlist/kendrick-lamar-and-sza/2025/hersheypark-stadium-hershey-pa-b5fe986.html' : '');
-  const [useProxies, setUseProxies] = useState(false);
   const [setlistData, setSetlistData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -59,7 +58,7 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/setlist/?url=${encodeURIComponent(url)}&use_proxies=${useProxies}`);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/setlist/?url=${encodeURIComponent(url)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch setlist');
       }
@@ -109,15 +108,6 @@ function App() {
             <button type="submit" disabled={loading}>
               {loading ? 'Fetching...' : 'Get Setlist'}
             </button>
-
-            <label className="proxy-checkbox">
-              <input
-                type="checkbox"
-                checked={useProxies}
-                onChange={(e) => setUseProxies(e.target.checked)}
-              />
-              Use Proxies
-            </label>
           </form>
 
           {error && <div className="error">{error}</div>}
