@@ -39,6 +39,7 @@ export function CreatePlaylistButton({
   isLoggedIn,
   spotifyUser,
   playlistName,
+  resolvedTracks,
 }) {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [playlistError, setPlaylistError] = useState(null);
@@ -53,12 +54,19 @@ export function CreatePlaylistButton({
     setPlaylistError(null);
 
     try {
-      // First get the Spotify track URIs for the songs
-      const spotifyTracks = await SpotifyService.getSongsByArtistAndNames(artistName, songs);
-      const trackUris = spotifyTracks.map(track => track.uri);
+      let trackUris;
 
-      if (IS_TEST) {
-        logSuccessMetric(spotifyTracks, songs);
+      if (resolvedTracks) {
+        // User has reviewed/edited the matches — use exactly those, in order.
+        trackUris = resolvedTracks.filter(Boolean).map((track) => track.uri);
+      } else {
+        // Fallback: resolve on the fly (e.g. not logged in when list rendered).
+        const spotifyTracks = await SpotifyService.getSongsByArtistAndNames(artistName, songs);
+        trackUris = spotifyTracks.map((track) => track.uri);
+
+        if (IS_TEST) {
+          logSuccessMetric(spotifyTracks, songs);
+        }
       }
 
       if (trackUris.length === 0) {

@@ -1,0 +1,14 @@
+- generic [ref=f2e3]:
+  - navigation [ref=f2e4]:
+    - generic [ref=f2e5]: setlist2playlist
+    - button "Connect Spotify" [ref=f2e6] [cursor=pointer]: Connect Spotify
+  - main [ref=f2e8]:
+    - generic [ref=f2e9]:
+      - heading "Turn any setlist into a playlist" [level=1] [ref=f2e10]
+      - paragraph [ref=f2e11]: Search for an artist's concert, or paste a setlist.fm link, and we'll build the setlist as a Spotify playlist.
+    - tablist [ref=f2e12]:
+      - tab "Search artist" [selected] [ref=f2e13] [cursor=pointer]
+      - tab "Paste URL" [ref=f2e14] [cursor=pointer]
+    - generic [ref=f2e15]:
+      - textbox "Search an artist, e.g. Radiohead" [ref=f2e16]
+      - button "Search" [disabled] [ref=f2e17]

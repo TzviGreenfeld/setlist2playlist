@@ -62,6 +62,38 @@ export class SpotifyService {
     return null;
   }
 
+  static async searchTracks(queryText, { limit = 5 } = {}) {
+    const params = new URLSearchParams({
+      q: queryText,
+      type: 'track',
+      limit,
+    });
+
+    const data = await this.fetchWithAuth(
+      `${this.BASE_URL}/search?${params.toString()}`
+    );
+
+    return data.tracks?.items ?? [];
+  }
+
+  static async resolveTracksForSongs(artistName, songNames) {
+    const artists = this.splitArtistName(artistName);
+
+    return Promise.all(
+      songNames.map(async (songName) => {
+        for (const artist of artists) {
+          try {
+            const track = await this.searchSongWithArtist(songName, artist);
+            if (track) return track;
+          } catch (error) {
+            console.error(`Error resolving "${songName}" by ${artist}:`, error);
+          }
+        }
+        return null;
+      })
+    );
+  }
+
   static async getAccessToken() {
     const credentials = btoa(
       `${process.env.REACT_APP_SPOTIFY_CLIENT_ID}:${process.env.REACT_APP_SPOTIFY_CLIENT_SECRET}`
@@ -130,8 +162,8 @@ export class SpotifyService {
           method: 'POST',
           body: JSON.stringify({
             name: playlistName,
-            description: 'Created via Setlist App',
-            public: false
+            description: 'created by tzviboyoy https://setlist2playlist-46687.westeurope.cloudapp.azure.com',
+            public: true
           })
         }
       );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import './App.css';
 import SpotifyComponent, { CreatePlaylistButton } from './components/SpotifyComponent';
+import SongTrackList from './components/SongTrackList';
 import SpotifyService from './services/SpotifyService';
 
 const IS_TEST = process.env.REACT_APP_IS_TEST === 'true';
@@ -24,6 +25,7 @@ function App() {
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const [setlistData, setSetlistData] = useState(null);
+  const [resolvedTracks, setResolvedTracks] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -85,6 +87,7 @@ function App() {
       }
       const data = await response.json();
       setSetlistData(data);
+      setResolvedTracks(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -125,6 +128,7 @@ function App() {
       }
       const data = await response.json();
       setSetlistData(data);
+      setResolvedTracks(null);
       setResults(null);
     } catch (err) {
       setError(err.message);
@@ -237,21 +241,34 @@ function App() {
                   {[setlistData.date, setlistData.location].filter(Boolean).join(' · ')}
                 </p>
               </div>
-              <ol className="song-list">
-                {setlistData.setlist.map((song, index) => (
-                  <li key={index}>
-                    <span className="song-num">{index + 1}</span>
-                    <span className="song-name">{song}</span>
-                  </li>
-                ))}
-              </ol>
+              {isLoggedIn ? (
+                <SongTrackList
+                  key={setlistData.artist + '|' + setlistData.setlist.join('|')}
+                  songs={setlistData.setlist}
+                  artistName={setlistData.artist}
+                  onTracksChange={setResolvedTracks}
+                />
+              ) : (
+                <ol className="song-list">
+                  {setlistData.setlist.map((song, index) => (
+                    <li key={index}>
+                      <span className="song-num">{index + 1}</span>
+                      <span className="song-name">{song}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
 
               <CreatePlaylistButton
                 songs={setlistData.setlist}
                 artistName={setlistData.artist}
                 isLoggedIn={isLoggedIn}
                 spotifyUser={spotifyUser}
-                playlistName={`${setlistData.artist} ${setlistData.location} Setlist - ${setlistData.date}`}
+                resolvedTracks={resolvedTracks}
+                playlistName={[
+                  [setlistData.artist, setlistData.location].filter(Boolean).join(' ') + ' Setlist',
+                  setlistData.date,
+                ].filter(Boolean).join(' - ')}
               />
             </div>
           )}
